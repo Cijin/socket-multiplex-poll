@@ -118,7 +118,7 @@ int main() {
     // to read, i.e. the POLLIN bit is set
     if (fds[0].revents & POLLIN) {
       if ((conn_fd = accept(sfd, (struct sockaddr *)&client_addr,
-                            &client_len) == -1)) {
+                            &client_len)) == -1) {
         perror("accept");
         continue;
       }
