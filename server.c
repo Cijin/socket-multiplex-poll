@@ -1,4 +1,4 @@
-#include <netinet/in.h>
+#include <netdb.h>
 #include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,7 +10,7 @@
 
 #define MAX_CLIENTS 256
 #define BUF_SIZE 4096
-#define PORT 8080
+#define PORT "8080"
 #define EXIT_ERROR -1
 
 typedef enum { STATE_NEW, STATE_CONNECTED, STATE_DISCONNECTED } state_e;
@@ -52,8 +52,9 @@ int find_free_slot_by_fd(int fd) {
 }
 
 int main() {
-  int sfd, conn_fd, nfds, freeSlot;
-  struct sockaddr_in serverInfo, client_addr;
+  int sfd, conn_fd, nfds, freeSlot, status;
+  struct sockaddr_in client_addr;
+  struct addrinfo hints, *serverInfo;
   socklen_t client_len = sizeof(client_addr);
 
   struct pollfd fds[MAX_CLIENTS + 1];
@@ -61,7 +62,18 @@ int main() {
 
   init_clients();
 
-  sfd = socket(AF_INET, SOCK_STREAM, 0);
+  memset(&hints, 0, sizeof(struct addrinfo));
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+  hints.ai_flags = AI_PASSIVE;
+
+  if ((status = getaddrinfo(NULL, PORT, &hints, &serverInfo)) != 0) {
+    printf("getaddrinfo error: %s\n", gai_strerror(status));
+    exit(EXIT_ERROR);
+  }
+
+  sfd = socket(serverInfo->ai_family, serverInfo->ai_socktype,
+               serverInfo->ai_protocol);
   if (sfd == -1) {
     perror("socket");
     exit(EXIT_ERROR);
@@ -73,13 +85,7 @@ int main() {
     exit(EXIT_ERROR);
   }
 
-  memset(&serverInfo, 0, sizeof(struct sockaddr_in));
-  serverInfo.sin_addr.s_addr = INADDR_ANY;
-  serverInfo.sin_family = AF_INET;
-  serverInfo.sin_port = htons(PORT);
-
-  if (bind(sfd, (struct sockaddr *)&serverInfo, sizeof(struct sockaddr_in)) ==
-      -1) {
+  if (bind(sfd, serverInfo->ai_addr, serverInfo->ai_addrlen) == -1) {
     perror("bind");
     exit(EXIT_ERROR);
   }
@@ -95,7 +101,7 @@ int main() {
   fds[0].events = POLLIN;
   nfds = 1;
 
-  printf("server listening on port: %d\n", PORT);
+  printf("server listening on port: %s\n", PORT);
 
   while (1) {
     // update fd set to include clients that are connected
