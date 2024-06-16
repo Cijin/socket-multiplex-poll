@@ -11,6 +11,7 @@
 #define MAX_CLIENTS 256
 #define BUF_SIZE 4096
 #define PORT "8080"
+#define BACKLOG 10
 #define EXIT_ERROR -1
 
 typedef enum { STATE_NEW, STATE_CONNECTED, STATE_DISCONNECTED } state_e;
@@ -53,7 +54,7 @@ int find_free_slot_by_fd(int fd) {
 
 int main() {
   int sfd, conn_fd, nfds, freeSlot, status;
-  struct sockaddr_in client_addr;
+  struct sockaddr_storage client_addr;
   struct addrinfo hints, *serverInfo;
   socklen_t client_len = sizeof(client_addr);
 
@@ -90,7 +91,7 @@ int main() {
     exit(EXIT_ERROR);
   }
 
-  if (listen(sfd, 10) == -1) {
+  if (listen(sfd, BACKLOG) == -1) {
     perror("listen");
     exit(EXIT_ERROR);
   }
